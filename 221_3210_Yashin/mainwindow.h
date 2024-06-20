@@ -30,7 +30,7 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
-    QVector<QString> promoCodes;
+    QVector<QByteArray> encryptedPromoCodes;
     QVector<QPushButton*> promoCard;
     QByteArray encryptionKey;
 

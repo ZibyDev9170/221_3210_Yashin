@@ -43,7 +43,8 @@ void MainWindow::handleOpenPromoCode()
 {
     // Выбираем случайную карточку и отображаем ее промокод
     int randomIndex = QRandomGenerator::global()->bounded(promoCard.size());
-    promoCard[randomIndex]->setText(promoCodes[randomIndex]);
+    QString decryptedCode = decryptPromoCode(encryptedPromoCodes[randomIndex]);
+    promoCard[randomIndex]->setText(decryptedCode);
     promoCard[randomIndex]->setStyleSheet("color:blue");
 
     addNewPromoCard();
@@ -65,7 +66,7 @@ void MainWindow::addNewPromoCard()
 {
     QString newCode = generateRandomCode();
     QByteArray encryptedCode = encryptPromoCode(newCode); // Шифрование
-    promoCodes.append(encryptedCode);
+    encryptedPromoCodes.append(encryptedCode);
 
     QPushButton *newPromoCard = new QPushButton("Промокод");
     newPromoCard->setFixedSize(200, 100); // Ширина в 2 раза больше высоты
@@ -141,10 +142,49 @@ QByteArray MainWindow::encryptPromoCode(const QString &promoCode)
     return encryptedCode;
 }
 
-//QString MainWindow::decryptPromoCode(const QByteArray &encryptedCode)
-//{
+QString MainWindow::decryptPromoCode(const QByteArray &encryptedCode)
+{
+    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+    if (!ctx) {
+        // Обработка ошибки инициализации
+        return QString();
+    }
 
-//}
+    QByteArray decryptedCode;
+    int len;
+    int plaintext_len;
+    unsigned char iv[AES_BLOCK_SIZE];
+    RAND_bytes(iv, AES_BLOCK_SIZE); // Генерируем случайный вектор инициализации
+
+    decryptedCode.resize(encryptedCode.size());
+
+    // Инициализируем дешифрование
+    if (1 != EVP_DecryptInit_ex(ctx, EVP_aes_256_ecb(), NULL, reinterpret_cast<const unsigned char*>(encryptionKey.data()), iv)) {
+        // Обработка ошибки инициализации
+        EVP_CIPHER_CTX_free(ctx);
+        return QString();
+    }
+
+    // Обновляем буфер с расшифрованными данными
+    if (1 != EVP_DecryptUpdate(ctx, reinterpret_cast<unsigned char*>(decryptedCode.data()), &len, reinterpret_cast<const unsigned char*>(encryptedCode.data()), encryptedCode.size())) {
+        // Обработка ошибки обновления
+        EVP_CIPHER_CTX_free(ctx);
+        return QString();
+    }
+    plaintext_len = len;
+
+    // Завершаем дешифрование
+    if (1 != EVP_DecryptFinal_ex(ctx, reinterpret_cast<unsigned char*>(decryptedCode.data()) + len, &len)) {
+        // Обработка ошибки завершения
+        EVP_CIPHER_CTX_free(ctx);
+        return QString();
+    }
+    plaintext_len += len;
+
+    decryptedCode.resize(plaintext_len);
+    EVP_CIPHER_CTX_free(ctx);
+    return QString::fromUtf8(decryptedCode);
+}
 
 // Функция для генерации ключа шифрования
 QByteArray MainWindow::generateEncryptionKey(const QString &pin)
