@@ -13,8 +13,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->lineEditPin->setEchoMode(QLineEdit::Password);
 
-    connect(ui->pushButtonLogin, &QPushButton::clicked, this, &MainWindow::handleLogin);
     connect(ui->pushButtonOpenPromo, &QPushButton::clicked, this, &MainWindow::handleOpenPromoCode);
+    connect(ui->pushButtonLogin, &QPushButton::clicked, this, &MainWindow::handleLogin);
+    ui->stackedWidget->setCurrentIndex(0);
 
     createPromoCards();
 }
