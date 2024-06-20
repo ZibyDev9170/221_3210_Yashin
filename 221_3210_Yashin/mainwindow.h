@@ -9,6 +9,7 @@
 #include <openssl/aes.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
+#include <QCloseEvent>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -40,5 +41,11 @@ private:
     QByteArray encryptPromoCode(const QString &promoCode);
     QString decryptPromoCode(const QByteArray &encryptedCode);
     QByteArray generateEncryptionKey(const QString &pin);
+    QString hashPin(const QString &pin);
+    void savePromoCodes();
+    void loadPromoCodes();
+
+protected:
+    void closeEvent(QCloseEvent *event) override;
 };
 #endif // MAINWINDOW_H

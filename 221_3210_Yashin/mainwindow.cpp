@@ -3,7 +3,15 @@
 #include <QMessageBox>
 #include <QRandomGenerator>
 #include <QGridLayout>
+#include <openssl/evp.h>
 #include <openssl/sha.h>
+#include <openssl/rand.h>
+#include <QFile>
+#include <QTextStream>
+#include <QDebug>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -13,8 +21,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->lineEditPin->setEchoMode(QLineEdit::Password);
 
-    connect(ui->pushButtonOpenPromo, &QPushButton::clicked, this, &MainWindow::handleOpenPromoCode);
     connect(ui->pushButtonLogin, &QPushButton::clicked, this, &MainWindow::handleLogin);
+    connect(ui->pushButtonOpenPromo, &QPushButton::clicked, this, &MainWindow::handleOpenPromoCode);
     ui->stackedWidget->setCurrentIndex(0);
 
     createPromoCards();
@@ -28,14 +36,31 @@ MainWindow::~MainWindow()
 // Авторизация
 void MainWindow::handleLogin()
 {
-    const QString correctPin = "7850"; // Верный PIN-код
+    const QString pinFilePath = "C:/Users/nikya/Documents/Programming/221_3210_Yashin/221_3210_Yashin/pin_hash.txt";
 
-    if (ui->lineEditPin->text() == correctPin) {
-        encryptionKey = generateEncryptionKey(correctPin); // Генерирую код для шифрования и дешифрования
+    // QString enteredPin = ui->lineEditPin->text();
+    // QString enteredHash = hashPin(enteredPin);
+    // qDebug() << enteredHash; be180d34dddf670bded23c372ef94f41d135935bf9ddeaca77d11c1ac53a6bf3
+
+    QFile file(pinFilePath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, "Ошибка", "Не удалось открыть файл с хешем PIN-кода");
+        return;
+    }
+
+    QTextStream in(&file);
+    QString storedHash = in.readLine();
+    file.close();
+
+    QString enteredPin = ui->lineEditPin->text();
+    QString enteredHash = hashPin(enteredPin);
+
+    if (storedHash == enteredHash) {
+    // if ("be180d34dddf670bded23c372ef94f41d135935bf9ddeaca77d11c1ac53a6bf3" == enteredHash) {
+        encryptionKey = generateEncryptionKey(enteredPin);
         ui->stackedWidget->setCurrentIndex(1);
     } else {
-        ui->label->setText("Неверный пин!");
-        ui->label->setStyleSheet("color:red");
+        QMessageBox::warning(this, "Ошибка", "Неверный PIN-код");
     }
 }
 
@@ -194,4 +219,46 @@ QByteArray MainWindow::generateEncryptionKey(const QString &pin)
     SHA256(reinterpret_cast<const unsigned char*>(pin.toUtf8().data()), pin.size(), reinterpret_cast<unsigned char*>(key.data()));
     key.resize(AES_BLOCK_SIZE);
     return key;
+}
+
+// Функция генерации хэша для пина
+QString MainWindow::hashPin(const QString &pin)
+{
+    QByteArray hash(SHA256_DIGEST_LENGTH, 0);
+    SHA256(reinterpret_cast<const unsigned char*>(pin.toUtf8().data()), pin.size(), reinterpret_cast<unsigned char*>(hash.data()));
+    // qDebug() << QString::fromLatin1(hash.toHex());
+    return QString::fromLatin1(hash.toHex());
+}
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    savePromoCodes();
+    event->accept();
+}
+
+// Функция сохранения
+void MainWindow::savePromoCodes()
+{
+    QJsonArray promoArray;
+    for (int i = 0; i < encryptedPromoCodes.size(); ++i) {
+        QJsonObject promoObject;
+        promoObject["code"] = QString(encryptedPromoCodes[i].toHex());
+        promoObject["state"] = promoCard[i]->text();
+        promoArray.append(promoObject);
+    }
+
+    QJsonObject rootObject;
+    rootObject["promos"] = promoArray;
+
+    QJsonDocument doc(rootObject);
+    QByteArray jsonData = doc.toJson();
+
+    // Шифруем JSON данные
+    QByteArray encryptedData = encryptPromoCode(QString(jsonData));
+
+    QFile file("C:/Users/nikya/Documents/Programming/221_3210_Yashin/221_3210_Yashin/json/promos.json");
+    if (file.open(QIODevice::WriteOnly)) {
+        file.write(encryptedData);
+        file.close();
+    }
 }
