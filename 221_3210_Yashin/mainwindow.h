@@ -4,6 +4,11 @@
 #include <QMainWindow>
 #include <QVector>
 #include <QPushButton>
+#include <QString>
+#include <QByteArray>
+#include <openssl/aes.h>
+#include <openssl/evp.h>
+#include <openssl/rand.h>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -27,9 +32,13 @@ private:
     Ui::MainWindow *ui;
     QVector<QString> promoCodes;
     QVector<QPushButton*> promoCard;
+    QByteArray encryptionKey;
 
     void createPromoCards();
     void addNewPromoCard();
     QString generateRandomCode();
+    QByteArray encryptPromoCode(const QString &promoCode);
+    QString decryptPromoCode(const QByteArray &encryptedCode);
+    QByteArray generateEncryptionKey(const QString &pin);
 };
 #endif // MAINWINDOW_H
