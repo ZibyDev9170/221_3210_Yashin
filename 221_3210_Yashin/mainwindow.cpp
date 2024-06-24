@@ -57,7 +57,7 @@ void MainWindow::handleLogin()
 
     if (storedHash == enteredHash) {
     // if ("be180d34dddf670bded23c372ef94f41d135935bf9ddeaca77d11c1ac53a6bf3" == enteredHash) {
-        encryptionKey = generateEncryptionKey(enteredPin);
+        // encryptionKey = generateEncryptionKey(enteredPin);
         ui->stackedWidget->setCurrentIndex(1);
     } else {
         QMessageBox::warning(this, "Ошибка", "Неверный PIN-код");
@@ -67,7 +67,6 @@ void MainWindow::handleLogin()
 // Открыть карточку с промокодом
 void MainWindow::handleOpenPromoCode()
 {
-    // Выбираем случайную карточку и отображаем ее промокод
     int randomIndex = QRandomGenerator::global()->bounded(promoCard.size());
     QString decryptedCode = decryptPromoCode(encryptedPromoCodes[randomIndex]);
     promoCard[randomIndex]->setText(decryptedCode);
@@ -99,7 +98,7 @@ void MainWindow::addNewPromoCard()
 
     int row = promoCard.size() / 4;
     int col = promoCard.size() % 4;
-    QGridLayout *layout = qobject_cast<QGridLayout*>(ui->promoCodesPage->layout());
+    QGridLayout *layout = qobject_cast<QGridLayout*>(ui->gridLayout->layout());
     if (layout) {
         layout->addWidget(newPromoCard, row, col);
     }
@@ -109,18 +108,39 @@ void MainWindow::addNewPromoCard()
 
 // Генерация случайного кода
 QString MainWindow::generateRandomCode()
-{
-    const QString possibleCharacters("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789");
-    const int randomStringLength = 4;
+// {
+//     const QString possibleCharacters("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789");
+//     const int randomStringLength = 4;
 
-    QString randomString;
-    for (int i = 0; i < randomStringLength; ++i) {
-        int index = QRandomGenerator::global()->bounded(possibleCharacters.length());
-        QChar nextChar = possibleCharacters.at(index);
-        randomString.append(nextChar);
+//     QString randomString;
+//     for (int i = 0; i < randomStringLength; ++i) {
+//         int index = QRandomGenerator::global()->bounded(possibleCharacters.length());
+//         QChar nextChar = possibleCharacters.at(index);
+//         randomString.append(nextChar);
+//     }
+
+//     return randomString;
+// }
+{
+    const int codeLength = 4;
+    QString randomCode;
+
+    for (int i = 0; i < codeLength; ++i) {
+        int randomCharType = QRandomGenerator::global()->bounded(3);
+        QChar nextChar;
+
+        if (randomCharType == 0) {
+            nextChar = QChar('0' + QRandomGenerator::global()->bounded(10));
+        } else if (randomCharType == 1) {
+            nextChar = QChar('A' + QRandomGenerator::global()->bounded(26));
+        } else {
+            nextChar = QChar('a' + QRandomGenerator::global()->bounded(26));
+        }
+
+        randomCode.append(nextChar);
     }
 
-    return randomString;
+    return randomCode;
 }
 
 // Шифрование промокода
@@ -188,6 +208,7 @@ QString MainWindow::decryptPromoCode(const QByteArray &encryptedCode)
     if (1 != EVP_DecryptInit_ex(ctx, EVP_aes_256_ecb(), NULL, reinterpret_cast<const unsigned char*>(encryptionKey.data()), iv)) {
         // Обработка ошибки инициализации
         EVP_CIPHER_CTX_free(ctx);
+        qDebug() << "1";
         return QString();
     }
 
@@ -195,6 +216,7 @@ QString MainWindow::decryptPromoCode(const QByteArray &encryptedCode)
     if (1 != EVP_DecryptUpdate(ctx, reinterpret_cast<unsigned char*>(decryptedCode.data()), &len, reinterpret_cast<const unsigned char*>(encryptedCode.data()), encryptedCode.size())) {
         // Обработка ошибки обновления
         EVP_CIPHER_CTX_free(ctx);
+        qDebug() << "2";
         return QString();
     }
     plaintext_len = len;
@@ -203,6 +225,7 @@ QString MainWindow::decryptPromoCode(const QByteArray &encryptedCode)
     if (1 != EVP_DecryptFinal_ex(ctx, reinterpret_cast<unsigned char*>(decryptedCode.data()) + len, &len)) {
         // Обработка ошибки завершения
         EVP_CIPHER_CTX_free(ctx);
+        qDebug() << "3";
         return QString();
     }
     plaintext_len += len;
